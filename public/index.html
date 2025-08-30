@@ -28,11 +28,12 @@
                 <div class="control-group">
                     <label for="location-input">Location Search:</label>
                     <div class="location-input-container">
-                        <input type="text" id="location-input" placeholder="Enter city, coordinates, or click on map">
+                        <input type="text" id="location-input" placeholder="Enter city, country, or coordinates (e.g., 'Paris', 'Japan', '40.7128, -74.0060')">
                         <button id="search-btn" class="btn btn-primary">
                             <i class="fas fa-search"></i> Search
                         </button>
                     </div>
+                    <div id="search-suggestions" class="search-suggestions" style="display: none;"></div>
                 </div>
 
                 <div class="control-row">

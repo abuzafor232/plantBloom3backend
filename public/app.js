@@ -10,6 +10,7 @@ class EnhancedPlantBloomMonitor {
         this.currentEpicIndex = 0;
         this.analysisData = null;
         this.weatherData = null;
+        this.searchTimeout = null;
         
         this.init();
     }
@@ -89,6 +90,18 @@ class EnhancedPlantBloomMonitor {
         document.getElementById('location-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 this.handleLocationSearch();
+            }
+        });
+
+        // Add input change listener for search suggestions
+        document.getElementById('location-input').addEventListener('input', (e) => {
+            this.handleLocationInputChange(e.target.value);
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.location-input-container')) {
+                this.hideSearchSuggestions();
             }
         });
     }
@@ -249,19 +262,19 @@ class EnhancedPlantBloomMonitor {
         if (!input) return;
 
         try {
-            if (input.includes(',')) {
-                const [lat, lon] = input.split(',').map(coord => parseFloat(coord.trim()));
-                if (!isNaN(lat) && !isNaN(lon)) {
-                    this.currentLocation = { lat, lon };
-                    this.addMarker(lat, lon);
-                    return;
-                }
-            }
-
             const coords = await this.geocodeLocation(input);
             if (coords) {
-                this.currentLocation = coords;
+                this.currentLocation = { lat: coords.lat, lon: coords.lon };
                 this.addMarker(coords.lat, coords.lon);
+                
+                // Update the input with the display name if available
+                if (coords.displayName) {
+                    this.updateLocationInput(coords.displayName);
+                }
+                
+                this.showNotification(`Location found: ${coords.displayName || `${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`}`, 'success');
+            } else {
+                this.showNotification('Location not found. Please try a different city, country, or coordinates.', 'error');
             }
         } catch (error) {
             console.error('Error searching location:', error);
@@ -270,23 +283,154 @@ class EnhancedPlantBloomMonitor {
     }
 
     async geocodeLocation(query) {
-        const commonLocations = {
-            'new york': { lat: 40.7128, lon: -74.0060 },
-            'london': { lat: 51.5074, lon: -0.1278 },
-            'tokyo': { lat: 35.6762, lon: 139.6503 },
-            'paris': { lat: 48.8566, lon: 2.3522 },
-            'sydney': { lat: -33.8688, lon: 151.2093 },
-            'amazon': { lat: -3.4653, lon: -58.3804 },
-            'sahara': { lat: 23.4162, lon: 25.6628 },
-            'himalayas': { lat: 27.9881, lon: 86.9250 },
-            'california': { lat: 36.7783, lon: -119.4179 },
-            'florida': { lat: 27.6648, lon: -81.5158 },
-            'alaska': { lat: 64.2008, lon: -149.4937 },
-            'hawaii': { lat: 19.8968, lon: -155.5828 }
-        };
+        try {
+            // First check if it's coordinates
+            if (query.includes(',')) {
+                const [lat, lon] = query.split(',').map(coord => parseFloat(coord.trim()));
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    return { lat, lon };
+                }
+            }
 
-        const normalizedQuery = query.toLowerCase().trim();
-        return commonLocations[normalizedQuery] || null;
+            // Use OpenStreetMap Nominatim for geocoding (free service)
+            const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`;
+            
+            const response = await fetch(searchUrl);
+            if (!response.ok) {
+                throw new Error('Geocoding service unavailable');
+            }
+            
+            const data = await response.json();
+            
+            if (data && data.length > 0) {
+                const result = data[0];
+                return {
+                    lat: parseFloat(result.lat),
+                    lon: parseFloat(result.lon),
+                    displayName: result.display_name
+                };
+            }
+
+            // Fallback to common locations
+            const commonLocations = {
+                'new york': { lat: 40.7128, lon: -74.0060 },
+                'london': { lat: 51.5074, lon: -0.1278 },
+                'tokyo': { lat: 35.6762, lon: 139.6503 },
+                'paris': { lat: 48.8566, lon: 2.3522 },
+                'sydney': { lat: -33.8688, lon: 151.2093 },
+                'amazon': { lat: -3.4653, lon: -58.3804 },
+                'sahara': { lat: 23.4162, lon: 25.6628 },
+                'himalayas': { lat: 27.9881, lon: 86.9250 },
+                'california': { lat: 36.7783, lon: -119.4179 },
+                'florida': { lat: 27.6648, lon: -81.5158 },
+                'alaska': { lat: 64.2008, lon: -149.4937 },
+                'hawaii': { lat: 19.8968, lon: -155.5828 },
+                'mumbai': { lat: 19.0760, lon: 72.8777 },
+                'beijing': { lat: 39.9042, lon: 116.4074 },
+                'moscow': { lat: 55.7558, lon: 37.6176 },
+                'cairo': { lat: 30.0444, lon: 31.2357 },
+                'rio de janeiro': { lat: -22.9068, lon: -43.1729 },
+                'mexico city': { lat: 19.4326, lon: -99.1332 },
+                'toronto': { lat: 43.6532, lon: -79.3832 },
+                'berlin': { lat: 52.5200, lon: 13.4050 },
+                'madrid': { lat: 40.4168, lon: -3.7038 },
+                'rome': { lat: 41.9028, lon: 12.4964 },
+                'amsterdam': { lat: 52.3676, lon: 4.9041 },
+                'stockholm': { lat: 59.3293, lon: 18.0686 },
+                'oslo': { lat: 59.9139, lon: 10.7522 },
+                'helsinki': { lat: 60.1699, lon: 24.9384 },
+                'dubai': { lat: 25.2048, lon: 55.2708 },
+                'singapore': { lat: 1.3521, lon: 103.8198 },
+                'bangkok': { lat: 13.7563, lon: 100.5018 },
+                'seoul': { lat: 37.5665, lon: 126.9780 },
+                'jakarta': { lat: -6.2088, lon: 106.8456 },
+                'manila': { lat: 14.5995, lon: 120.9842 },
+                'vietnam': { lat: 16.0544, lon: 108.2022 },
+                'thailand': { lat: 13.7563, lon: 100.5018 },
+                'india': { lat: 20.5937, lon: 78.9629 },
+                'china': { lat: 35.8617, lon: 104.1954 },
+                'japan': { lat: 36.2048, lon: 138.2529 },
+                'russia': { lat: 61.5240, lon: 105.3188 },
+                'canada': { lat: 56.1304, lon: -106.3468 },
+                'brazil': { lat: -14.2350, lon: -51.9253 },
+                'argentina': { lat: -38.4161, lon: -63.6167 },
+                'chile': { lat: -35.6751, lon: -71.5430 },
+                'peru': { lat: -9.1900, lon: -75.0152 },
+                'colombia': { lat: 4.5709, lon: -74.2973 },
+                'venezuela': { lat: 6.4238, lon: -66.5897 },
+                'ecuador': { lat: -1.8312, lon: -78.1834 },
+                'bolivia': { lat: -16.2902, lon: -63.5887 },
+                'paraguay': { lat: -23.4425, lon: -58.4438 },
+                'uruguay': { lat: -32.5228, lon: -55.7658 },
+                'guyana': { lat: 4.8604, lon: -58.9302 },
+                'suriname': { lat: 3.9193, lon: -56.0278 },
+                'french guiana': { lat: 3.9339, lon: -53.1258 }
+            };
+
+            const normalizedQuery = query.toLowerCase().trim();
+            return commonLocations[normalizedQuery] || null;
+        } catch (error) {
+            console.error('Geocoding error:', error);
+            
+            // Fallback to common locations
+            const commonLocations = {
+                'new york': { lat: 40.7128, lon: -74.0060 },
+                'london': { lat: 51.5074, lon: -0.1278 },
+                'tokyo': { lat: 35.6762, lon: 139.6503 },
+                'paris': { lat: 48.8566, lon: 2.3522 },
+                'sydney': { lat: -33.8688, lon: 151.2093 },
+                'amazon': { lat: -3.4653, lon: -58.3804 },
+                'sahara': { lat: 23.4162, lon: 25.6628 },
+                'himalayas': { lat: 27.9881, lon: 86.9250 },
+                'california': { lat: 36.7783, lon: -119.4179 },
+                'florida': { lat: 27.6648, lon: -81.5158 },
+                'alaska': { lat: 64.2008, lon: -149.4937 },
+                'hawaii': { lat: 19.8968, lon: -155.5828 },
+                'mumbai': { lat: 19.0760, lon: 72.8777 },
+                'beijing': { lat: 39.9042, lon: 116.4074 },
+                'moscow': { lat: 55.7558, lon: 37.6176 },
+                'cairo': { lat: 30.0444, lon: 31.2357 },
+                'rio de janeiro': { lat: -22.9068, lon: -43.1729 },
+                'mexico city': { lat: 19.4326, lon: -99.1332 },
+                'toronto': { lat: 43.6532, lon: -79.3832 },
+                'berlin': { lat: 52.5200, lon: 13.4050 },
+                'madrid': { lat: 40.4168, lon: -3.7038 },
+                'rome': { lat: 41.9028, lon: 12.4964 },
+                'amsterdam': { lat: 52.3676, lon: 4.9041 },
+                'stockholm': { lat: 59.3293, lon: 18.0686 },
+                'oslo': { lat: 59.9139, lon: 10.7522 },
+                'helsinki': { lat: 60.1699, lon: 24.9384 },
+                'dubai': { lat: 25.2048, lon: 55.2708 },
+                'singapore': { lat: 1.3521, lon: 103.8198 },
+                'bangkok': { lat: 13.7563, lon: 100.5018 },
+                'seoul': { lat: 37.5665, lon: 126.9780 },
+                'jakarta': { lat: -6.2088, lon: 106.8456 },
+                'manila': { lat: 14.5995, lon: 120.9842 },
+                'vietnam': { lat: 16.0544, lon: 108.2022 },
+                'thailand': { lat: 13.7563, lon: 100.5018 },
+                'india': { lat: 20.5937, lon: 78.9629 },
+                'china': { lat: 35.8617, lon: 104.1954 },
+                'japan': { lat: 36.2048, lon: 138.2529 },
+                'russia': { lat: 61.5240, lon: 105.3188 },
+                'canada': { lat: 56.1304, lon: -106.3468 },
+                'brazil': { lat: -14.2350, lon: -51.9253 },
+                'argentina': { lat: -38.4161, lon: -63.6167 },
+                'chile': { lat: -35.6751, lon: -71.5430 },
+                'peru': { lat: -9.1900, lon: -75.0152 },
+                'colombia': { lat: 4.5709, lon: -74.2973 },
+                'venezuela': { lat: 6.4238, lon: -66.5897 },
+                'ecuador': { lat: -1.8312, lon: -78.1834 },
+                'bolivia': { lat: -16.2902, lon: -63.5887 },
+                'paraguay': { lat: -23.4425, lon: -58.4438 },
+                'uruguay': { lat: -32.5228, lon: -55.7658 },
+                'guyana': { lat: 4.8604, lon: -58.9302 },
+                'suriname': { lat: 3.9193, lon: -56.0278 },
+                'french guiana': { lat: 3.9339, lon: -53.1258 }
+            };
+
+            const normalizedQuery = query.toLowerCase().trim();
+            return commonLocations[normalizedQuery] || null;
+        }
     }
 
     async analyzeVegetation() {
@@ -862,6 +1006,90 @@ class EnhancedPlantBloomMonitor {
             info: '#3b82f6'
         };
         return colors[type] || '#3b82f6';
+    }
+
+    hideSearchSuggestions() {
+        const suggestionsContainer = document.getElementById('search-suggestions');
+        suggestionsContainer.style.display = 'none';
+    }
+
+    handleLocationInputChange(value) {
+        // Clear previous timeout
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+
+        // Hide suggestions if input is empty
+        if (!value.trim()) {
+            this.hideSearchSuggestions();
+            return;
+        }
+
+        // Debounce search to avoid too many API calls
+        this.searchTimeout = setTimeout(() => {
+            this.searchLocationSuggestions(value);
+        }, 300);
+    }
+
+    async searchLocationSuggestions(query) {
+        try {
+            // Use OpenStreetMap Nominatim for search suggestions
+            const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+            
+            const response = await fetch(searchUrl);
+            if (!response.ok) {
+                return;
+            }
+            
+            const data = await response.json();
+            
+            if (data && data.length > 0) {
+                this.showSearchSuggestions(data);
+            } else {
+                this.hideSearchSuggestions();
+            }
+        } catch (error) {
+            console.error('Error searching suggestions:', error);
+            this.hideSearchSuggestions();
+        }
+    }
+
+    showSearchSuggestions(suggestions) {
+        const suggestionsContainer = document.getElementById('search-suggestions');
+        
+        suggestionsContainer.innerHTML = suggestions.map(suggestion => `
+            <div class="search-suggestion-item" data-lat="${suggestion.lat}" data-lon="${suggestion.lon}" data-name="${suggestion.display_name}">
+                <div class="suggestion-name">${this.formatSuggestionName(suggestion)}</div>
+                <div class="suggestion-details">${suggestion.display_name}</div>
+            </div>
+        `).join('');
+
+        // Add click event listeners to suggestions
+        suggestionsContainer.querySelectorAll('.search-suggestion-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const lat = parseFloat(item.dataset.lat);
+                const lon = parseFloat(item.dataset.lon);
+                const name = item.dataset.name;
+                
+                this.currentLocation = { lat, lon };
+                this.addMarker(lat, lon);
+                this.updateLocationInput(name);
+                this.hideSearchSuggestions();
+                
+                this.showNotification(`Location selected: ${this.formatSuggestionName({ display_name: name })}`, 'success');
+            });
+        });
+
+        suggestionsContainer.style.display = 'block';
+    }
+
+    formatSuggestionName(suggestion) {
+        // Extract the most relevant part of the display name
+        const parts = suggestion.display_name.split(', ');
+        if (parts.length >= 2) {
+            return `${parts[0]}, ${parts[1]}`;
+        }
+        return parts[0] || suggestion.display_name;
     }
 }
 

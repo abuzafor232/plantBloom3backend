@@ -27,3 +27,4 @@ netlify deploy --prod
 echo "🎉 Deployment complete!"
 echo "📱 Your site is now live on Netlify!"
 echo "🔗 Check the URL above for your live site."
+
