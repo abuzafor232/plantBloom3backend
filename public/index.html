@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Plant Bloom Monitor - NASA Earth Observations</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-seedling"></i>
+                    <h1> Plant Bloom Monitor</h1>
+                </div>
+                <p class="subtitle">Advanced monitoring with NASA Earth observations, weather correlation, and AI-powered insights</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Enhanced Control Panel -->
+            <section class="control-panel">
+                <div class="control-group">
+                    <label for="location-input">Location Search:</label>
+                    <div class="location-input-container">
+                        <input type="text" id="location-input" placeholder="Enter city, coordinates, or click on map">
+                        <button id="search-btn" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <div class="control-group">
+                        <label for="start-date">Start Date:</label>
+                        <input type="date" id="start-date" value="2024-01-01">
+                    </div>
+                    <div class="control-group">
+                        <label for="end-date">End Date:</label>
+                        <input type="date" id="end-date" value="2024-12-31">
+                    </div>
+                    <div class="control-group">
+                        <label for="vegetation-index">Vegetation Index:</label>
+                        <select id="vegetation-index">
+                            <option value="NDVI">NDVI (Normalized Difference Vegetation Index)</option>
+                            <option value="EVI">EVI (Enhanced Vegetation Index)</option>
+                            <option value="LAI">LAI (Leaf Area Index)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <button id="analyze-btn" class="btn btn-success">
+                        <i class="fas fa-chart-line"></i> Analyze Vegetation
+                    </button>
+                    <button id="advanced-analysis-btn" class="btn btn-warning">
+                        <i class="fas fa-brain"></i> Advanced Analysis
+                    </button>
+                    <button id="epic-btn" class="btn btn-info">
+                        <i class="fas fa-satellite"></i> View EPIC Images
+                    </button>
+                    <button id="reset-btn" class="btn btn-secondary">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+                </div>
+
+                <!-- New Advanced Controls -->
+                <div class="advanced-controls" id="advanced-controls" style="display: none;">
+                    <h4>Advanced Features</h4>
+                    <div class="control-row">
+                        <button id="climate-impact-btn" class="btn btn-outline">
+                            <i class="fas fa-thermometer-half"></i> Climate Impact
+                        </button>
+                        <button id="pollinator-btn" class="btn btn-outline">
+                            <i class="fas fa-bee"></i> Pollinator Activity
+                        </button>
+                        <button id="biodiversity-btn" class="btn btn-outline">
+                            <i class="fas fa-tree"></i> Biodiversity Hotspots
+                        </button>
+                        <button id="weather-correlation-btn" class="btn btn-outline">
+                            <i class="fas fa-cloud-sun"></i> Weather Correlation
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Enhanced Visualization Area -->
+            <section class="visualization-area">
+                <div class="map-container">
+                    <div id="map" class="map"></div>
+                    <div class="map-overlay">
+                        <div class="map-info">
+                            <h3>Interactive Map</h3>
+                            <p>Click anywhere on the map to analyze vegetation at that location</p>
+                            <div class="map-layers">
+                                <label><input type="checkbox" id="satellite-layer" checked> Satellite</label>
+                                <label><input type="checkbox" id="vegetation-layer"> Vegetation</label>
+                                <label><input type="checkbox" id="weather-layer"> Weather</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <h3>Vegetation Timeline</h3>
+                        <canvas id="vegetation-chart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Seasonal Patterns</h3>
+                        <canvas id="seasonal-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Enhanced Data Display -->
+            <section class="data-section">
+                <div class="data-header">
+                    <h3>Vegetation Analysis Results</h3>
+                    <div class="data-controls">
+                        <button id="export-btn" class="btn btn-outline">
+                            <i class="fas fa-download"></i> Export Data
+                        </button>
+                        <button id="share-btn" class="btn btn-outline">
+                            <i class="fas fa-share"></i> Share
+                        </button>
+                        <button id="compare-btn" class="btn btn-outline">
+                            <i class="fas fa-balance-scale"></i> Compare
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Data Source Indicator -->
+                <div class="data-source-indicator" id="data-source-indicator">
+                    <div class="indicator-item">
+                        <i class="fas fa-satellite"></i>
+                        <span id="data-source-text">Data source: Enhanced simulation with NASA imagery</span>
+                    </div>
+                    <div class="indicator-item">
+                        <i class="fas fa-info-circle"></i>
+                        <span id="data-quality-text">Quality: High-quality simulated data</span>
+                    </div>
+                </div>
+                
+                <div class="data-grid">
+                    <div class="data-card">
+                        <div class="data-icon">
+                            <i class="fas fa-leaf"></i>
+                        </div>
+                        <div class="data-content">
+                            <h4>Current Vegetation Index</h4>
+                            <div class="data-value" id="current-vegetation">--</div>
+                            <div class="data-label">NDVI Value</div>
+                        </div>
+                    </div>
+                    
+                    <div class="data-card">
+                        <div class="data-icon">
+                            <i class="fas fa-arrow-trend-up"></i>
+                        </div>
+                        <div class="data-content">
+                            <h4>Trend</h4>
+                            <div class="data-value" id="vegetation-trend">--</div>
+                            <div class="data-label">Change from last month</div>
+                        </div>
+                    </div>
+                    
+                    <div class="data-card">
+                        <div class="data-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="data-content">
+                            <h4>Peak Bloom</h4>
+                            <div class="data-value" id="peak-bloom">--</div>
+                            <div class="data-label">Estimated peak date</div>
+                        </div>
+                    </div>
+                    
+                    <div class="data-card">
+                        <div class="data-icon">
+                            <i class="fas fa-cloud-sun"></i>
+                        </div>
+                        <div class="data-content">
+                            <h4>Confidence</h4>
+                            <div class="data-value" id="confidence">--</div>
+                            <div class="data-label">Data quality score</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- New: Advanced Analysis Results -->
+            <section class="advanced-analysis-section" id="advanced-analysis-section" style="display: none;">
+                <h3>Advanced Analysis Results</h3>
+                
+                <!-- Trends Analysis -->
+                <div class="analysis-card">
+                    <h4><i class="fas fa-chart-line"></i> Trend Analysis</h4>
+                    <div class="analysis-content" id="trends-analysis">
+                        <p>Click "Advanced Analysis" to view detailed trends</p>
+                    </div>
+                </div>
+
+                <!-- Anomalies Detection -->
+                <div class="analysis-card">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Anomalies Detection</h4>
+                    <div class="analysis-content" id="anomalies-analysis">
+                        <p>Click "Advanced Analysis" to detect anomalies</p>
+                    </div>
+                </div>
+
+                <!-- Seasonality Analysis -->
+                <div class="analysis-card">
+                    <h4><i class="fas fa-calendar-week"></i> Seasonality Analysis</h4>
+                    <div class="analysis-content" id="seasonality-analysis">
+                        <p>Click "Advanced Analysis" to analyze seasonality</p>
+                    </div>
+                </div>
+
+                <!-- Predictions -->
+                <div class="analysis-card">
+                    <h4><i class="fas fa-crystal-ball"></i> Future Predictions</h4>
+                    <div class="analysis-content" id="predictions-analysis">
+                        <p>Click "Advanced Analysis" to view predictions</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- New: Climate Impact Section -->
+            <section class="climate-impact-section" id="climate-impact-section" style="display: none;">
+                <h3>Climate Change Impact Analysis</h3>
+                <div class="climate-content" id="climate-content">
+                    <p>Click "Climate Impact" to analyze climate change effects</p>
+                </div>
+            </section>
+
+            <!-- New: Pollinator Activity Section -->
+            <section class="pollinator-section" id="pollinator-section" style="display: none;">
+                <h3>Pollinator Activity Prediction</h3>
+                <div class="pollinator-content" id="pollinator-content">
+                    <p>Click "Pollinator Activity" to predict pollinator behavior</p>
+                </div>
+            </section>
+
+            <!-- New: Biodiversity Hotspots Section -->
+            <section class="biodiversity-section" id="biodiversity-section" style="display: none;">
+                <h3>Biodiversity Hotspots Detection</h3>
+                <div class="biodiversity-content" id="biodiversity-content">
+                    <p>Click "Biodiversity Hotspots" to detect biodiversity areas</p>
+                </div>
+            </section>
+
+            <!-- New: Weather Correlation Section -->
+            <section class="weather-correlation-section" id="weather-correlation-section" style="display: none;">
+                <h3>Weather Correlation Analysis</h3>
+                <div class="weather-content" id="weather-content">
+                    <p>Click "Weather Correlation" to analyze weather impact</p>
+                </div>
+            </section>
+
+            <!-- Enhanced EPIC Images Gallery -->
+            <section class="epic-gallery" id="epic-gallery" style="display: none;">
+                <h3>Enhanced EPIC Satellite Images</h3>
+                <div class="gallery-controls">
+                    <button id="prev-epic" class="btn btn-outline">
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </button>
+                    <span id="epic-date-display">Latest Image</span>
+                    <button id="next-epic" class="btn btn-outline">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="epic-image-container">
+                    <img id="epic-image" src="" alt="EPIC satellite image">
+                    <div class="epic-info">
+                        <p id="epic-caption">Click to view enhanced EPIC images from NASA's DSCOVR satellite</p>
+                        <div class="epic-metadata" id="epic-metadata">
+                            <!-- Enhanced metadata will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>&copy; 2024 Enhanced Plant Bloom Monitor. Powered by NASA Earth Observations API & AI Insights.</p>
+                <div class="footer-links">
+                    <a href="https://api.nasa.gov/" target="_blank">NASA API</a>
+                    <a href="https://earthobservatory.nasa.gov/" target="_blank">Earth Observatory</a>
+                    <a href="https://epic.gsfc.nasa.gov/" target="_blank">EPIC</a>
+                    <a href="https://modis.gsfc.nasa.gov/" target="_blank">MODIS</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Enhanced Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p id="loading-message">Analyzing vegetation data...</p>
+            <div class="loading-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <span id="progress-text">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="app.js"></script>
+</body>
+</html>

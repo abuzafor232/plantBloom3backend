@@ -1,0 +1,803 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+}
+
+/* App Container */
+.app-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem 0;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.logo i {
+    font-size: 2.5rem;
+    color: #4ade80;
+}
+
+.logo h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    font-weight: 300;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    width: 100%;
+}
+
+/* Enhanced Control Panel */
+.control-panel {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.control-group {
+    margin-bottom: 1.5rem;
+}
+
+.control-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.control-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.location-input-container {
+    display: flex;
+    gap: 1rem;
+}
+
+.location-input-container input {
+    flex: 1;
+}
+
+/* Advanced Controls */
+.advanced-controls {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    border: 1px solid #e2e8f0;
+}
+
+.advanced-controls h4 {
+    margin-bottom: 1rem;
+    color: #374151;
+    font-size: 1.1rem;
+}
+
+/* Form Elements */
+input, select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Enhanced Buttons */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    color: white;
+}
+
+.btn-info:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(6, 182, 212, 0.3);
+}
+
+.btn-secondary {
+    background: #6b7280;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+    transform: translateY(-2px);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid #d1d5db;
+    color: #374151;
+}
+
+.btn-outline:hover {
+    border-color: #667eea;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+/* Enhanced Visualization Area */
+.visualization-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.map-container {
+    position: relative;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.map {
+    height: 400px;
+    width: 100%;
+}
+
+.map-overlay {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 1rem;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    max-width: 280px;
+}
+
+.map-info h3 {
+    margin-bottom: 0.5rem;
+    color: #374151;
+}
+
+.map-info p {
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.map-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.map-layers label {
+    font-size: 0.8rem;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.map-layers input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.charts-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.chart-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    flex: 1;
+}
+
+.chart-card h3 {
+    margin-bottom: 1rem;
+    color: #374151;
+    font-size: 1.1rem;
+}
+
+.chart-card canvas {
+    width: 100% !important;
+    height: 180px !important;
+}
+
+/* Enhanced Data Section */
+.data-section {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.data-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.data-header h3 {
+    color: #374151;
+    font-size: 1.5rem;
+}
+
+.data-controls {
+    display: flex;
+    gap: 1rem;
+}
+
+.data-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.data-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.data-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+.data-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.data-content h4 {
+    margin-bottom: 0.5rem;
+    color: #374151;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.data-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.data-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+/* New: Advanced Analysis Section */
+.advanced-analysis-section {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.advanced-analysis-section h3 {
+    margin-bottom: 1.5rem;
+    color: #374151;
+    font-size: 1.5rem;
+}
+
+.analysis-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #e2e8f0;
+}
+
+.analysis-card h4 {
+    margin-bottom: 1rem;
+    color: #374151;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.analysis-card h4 i {
+    color: #667eea;
+}
+
+.analysis-content {
+    color: #6b7280;
+}
+
+.analysis-content p {
+    margin-bottom: 0.5rem;
+}
+
+/* New: Climate Impact Section */
+.climate-impact-section {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.climate-impact-section h3 {
+    margin-bottom: 1.5rem;
+    color: #374151;
+    font-size: 1.5rem;
+}
+
+.climate-content {
+    color: #6b7280;
+}
+
+/* New: Pollinator Section */
+.pollinator-section {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.pollinator-section h3 {
+    margin-bottom: 1.5rem;
+    color: #374151;
+    font-size: 1.5rem;
+}
+
+.pollinator-content {
+    color: #6b7280;
+}
+
+/* New: Biodiversity Section */
+.biodiversity-section {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.biodiversity-section h3 {
+    margin-bottom: 1.5rem;
+    color: #374151;
+    font-size: 1.5rem;
+}
+
+.biodiversity-content {
+    color: #6b7280;
+}
+
+/* New: Weather Correlation Section */
+.weather-correlation-section {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.weather-correlation-section h3 {
+    margin-bottom: 1.5rem;
+    color: #374151;
+    font-size: 1.5rem;
+}
+
+.weather-content {
+    color: #6b7280;
+}
+
+/* Enhanced EPIC Gallery */
+.epic-gallery {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.epic-gallery h3 {
+    margin-bottom: 1.5rem;
+    color: #374151;
+    font-size: 1.5rem;
+}
+
+.gallery-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+#epic-date-display {
+    font-weight: 600;
+    color: #374151;
+    min-width: 150px;
+    text-align: center;
+}
+
+.epic-image-container {
+    text-align: center;
+}
+
+#epic-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1rem;
+}
+
+.epic-info p {
+    color: #6b7280;
+    font-style: italic;
+    margin-bottom: 1rem;
+}
+
+.epic-metadata {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: left;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.epic-metadata h5 {
+    color: #374151;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.epic-metadata p {
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Footer */
+.footer {
+    background: #1f2937;
+    color: white;
+    padding: 2rem 0;
+    margin-top: auto;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    text-align: center;
+}
+
+.footer-links {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.footer-links a {
+    color: #9ca3af;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+    color: #667eea;
+}
+
+/* Enhanced Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.loading-content {
+    text-align: center;
+    color: white;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+#loading-message {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.loading-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.progress-bar {
+    width: 200px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+#progress-text {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .main-content {
+        padding: 1rem;
+    }
+    
+    .control-panel {
+        padding: 1.5rem;
+    }
+    
+    .visualization-area {
+        grid-template-columns: 1fr;
+    }
+    
+    .map {
+        height: 300px;
+    }
+    
+    .data-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .data-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .gallery-controls {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .logo h1 {
+        font-size: 2rem;
+    }
+    
+    .subtitle {
+        font-size: 1rem;
+    }
+    
+    .advanced-controls .control-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .header {
+        padding: 1.5rem 0;
+    }
+    
+    .logo h1 {
+        font-size: 1.5rem;
+    }
+    
+    .logo i {
+        font-size: 2rem;
+    }
+    
+    .control-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .location-input-container {
+        flex-direction: column;
+    }
+    
+    .data-controls {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .data-controls .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Data Source Indicator */
+.data-source-indicator {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.indicator-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #374151;
+}
+
+.indicator-item i {
+    color: #667eea;
+    font-size: 1rem;
+}
+
+.data-source-real {
+    color: #10b981 !important;
+    font-weight: 600;
+}
+
+.data-source-simulated {
+    color: #f59e0b !important;
+    font-weight: 600;
+}
+
+.data-quality-high {
+    color: #10b981 !important;
+    font-weight: 600;
+}
+
+.data-quality-medium {
+    color: #f59e0b !important;
+    font-weight: 600;
+}
+
+.data-quality-low {
+    color: #ef4444 !important;
+    font-weight: 600;
+}
