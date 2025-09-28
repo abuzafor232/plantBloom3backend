@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Functionality Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .location-input-container {
+            display: flex;
+            gap: 1rem;
+            margin: 10px 0;
+        }
+        .location-input-container input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .btn {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .search-suggestions {
+            margin-top: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .search-suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .search-suggestion-item:hover {
+            background-color: #f8f9fa;
+        }
+        .suggestion-name {
+            font-weight: bold;
+        }
+        .suggestion-details {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Search Functionality Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Basic Search</h2>
+        <p>Try searching for cities like "Paris", "Tokyo", "New York" or countries like "Japan", "Brazil", "Canada"</p>
+        <div class="location-input-container">
+            <input type="text" id="test-input" placeholder="Enter city, country, or coordinates">
+            <button id="test-search-btn" class="btn">Search</button>
+        </div>
+        <div id="test-suggestions" class="search-suggestions" style="display: none;"></div>
+        <div id="test-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Coordinate Search</h2>
+        <p>Try searching for coordinates like "40.7128, -74.0060" or "51.5074, -0.1278"</p>
+        <div class="location-input-container">
+            <input type="text" id="coord-input" placeholder="Enter coordinates (lat, lon)">
+            <button id="coord-search-btn" class="btn">Search</button>
+        </div>
+        <div id="coord-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Search Suggestions</h2>
+        <p>Type in the input field to see real-time search suggestions</p>
+        <div class="location-input-container">
+            <input type="text" id="suggestions-input" placeholder="Start typing a city or country name...">
+        </div>
+        <div id="suggestions-container" class="search-suggestions" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Test the geocoding functionality
+        async function geocodeLocation(query) {
+            try {
+                // First check if it's coordinates
+                if (query.includes(',')) {
+                    const [lat, lon] = query.split(',').map(coord => parseFloat(coord.trim()));
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        return { lat, lon };
+                    }
+                }
+
+                // Use OpenStreetMap Nominatim for geocoding (free service)
+                const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`;
+                
+                const response = await fetch(searchUrl);
+                if (!response.ok) {
+                    throw new Error('Geocoding service unavailable');
+                }
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    return {
+                        lat: parseFloat(result.lat),
+                        lon: parseFloat(result.lon),
+                        displayName: result.display_name
+                    };
+                }
+
+                return null;
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                return null;
+            }
+        }
+
+        // Test 1: Basic Search
+        document.getElementById('test-search-btn').addEventListener('click', async () => {
+            const input = document.getElementById('test-input').value.trim();
+            const resultDiv = document.getElementById('test-result');
+            
+            if (!input) {
+                resultDiv.innerHTML = '<strong>Error:</strong> Please enter a search term';
+                resultDiv.style.display = 'block';
+                return;
+            }
+
+            resultDiv.innerHTML = '<strong>Searching...</strong>';
+            resultDiv.style.display = 'block';
+
+            const coords = await geocodeLocation(input);
+            if (coords) {
+                resultDiv.innerHTML = `
+                    <strong>Location Found!</strong><br>
+                    <strong>Coordinates:</strong> ${coords.lat}, ${coords.lon}<br>
+                    <strong>Display Name:</strong> ${coords.displayName || 'N/A'}<br>
+                    <strong>Search Term:</strong> "${input}"
+                `;
+            } else {
+                resultDiv.innerHTML = `<strong>Location not found</strong> for "${input}"`;
+            }
+        });
+
+        // Test 2: Coordinate Search
+        document.getElementById('coord-search-btn').addEventListener('click', async () => {
+            const input = document.getElementById('coord-input').value.trim();
+            const resultDiv = document.getElementById('coord-result');
+            
+            if (!input) {
+                resultDiv.innerHTML = '<strong>Error:</strong> Please enter coordinates';
+                resultDiv.style.display = 'block';
+                return;
+            }
+
+            resultDiv.innerHTML = '<strong>Processing coordinates...</strong>';
+            resultDiv.style.display = 'block';
+
+            const coords = await geocodeLocation(input);
+            if (coords) {
+                resultDiv.innerHTML = `
+                    <strong>Coordinates Processed!</strong><br>
+                    <strong>Latitude:</strong> ${coords.lat}<br>
+                    <strong>Longitude:</strong> ${coords.lon}<br>
+                    <strong>Input:</strong> "${input}"
+                `;
+            } else {
+                resultDiv.innerHTML = `<strong>Invalid coordinates:</strong> "${input}"`;
+            }
+        });
+
+        // Test 3: Search Suggestions
+        let searchTimeout = null;
+        document.getElementById('suggestions-input').addEventListener('input', (e) => {
+            const value = e.target.value.trim();
+            
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+
+            // Hide suggestions if input is empty
+            if (!value) {
+                document.getElementById('suggestions-container').style.display = 'none';
+                return;
+            }
+
+            // Debounce search
+            searchTimeout = setTimeout(() => {
+                searchLocationSuggestions(value);
+            }, 300);
+        });
+
+        async function searchLocationSuggestions(query) {
+            try {
+                const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+                
+                const response = await fetch(searchUrl);
+                if (!response.ok) {
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    showSearchSuggestions(data);
+                } else {
+                    document.getElementById('suggestions-container').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error searching suggestions:', error);
+                document.getElementById('suggestions-container').style.display = 'none';
+            }
+        }
+
+        function showSearchSuggestions(suggestions) {
+            const container = document.getElementById('suggestions-container');
+            
+            container.innerHTML = suggestions.map(suggestion => `
+                <div class="search-suggestion-item" onclick="selectSuggestion('${suggestion.lat}', '${suggestion.lon}', '${suggestion.display_name}')">
+                    <div class="suggestion-name">${formatSuggestionName(suggestion)}</div>
+                    <div class="suggestion-details">${suggestion.display_name}</div>
+                </div>
+            `).join('');
+
+            container.style.display = 'block';
+        }
+
+        function formatSuggestionName(suggestion) {
+            const parts = suggestion.display_name.split(', ');
+            if (parts.length >= 2) {
+                return `${parts[0]}, ${parts[1]}`;
+            }
+            return parts[0] || suggestion.display_name;
+        }
+
+        function selectSuggestion(lat, lon, name) {
+            document.getElementById('suggestions-input').value = formatSuggestionName({ display_name: name });
+            document.getElementById('suggestions-container').style.display = 'none';
+            
+            // Show result
+            const resultDiv = document.getElementById('test-result');
+            resultDiv.innerHTML = `
+                <strong>Suggestion Selected!</strong><br>
+                <strong>Coordinates:</strong> ${lat}, ${lon}<br>
+                <strong>Name:</strong> ${formatSuggestionName({ display_name: name })}<br>
+                <strong>Full Name:</strong> ${name}
+            `;
+            resultDiv.style.display = 'block';
+        }
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.location-input-container') && !e.target.closest('#suggestions-container')) {
+                document.getElementById('suggestions-container').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
+
+

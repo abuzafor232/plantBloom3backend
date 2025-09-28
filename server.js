@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const NodeCache = require('node-cache');
+require('dotenv').config();
 const config = require('./config');
 
 const app = express();
@@ -155,6 +156,222 @@ app.get('/api/vegetation/analysis', async (req, res) => {
   }
 });
 
+// New: Real vegetation request via Harmony (MODIS MOD13Q1 NDVI/EVI)
+app.get('/api/vegetation/real', async (req, res) => {
+  try {
+    const { lat, lon, start_date, end_date, product = 'MOD13Q1', version = '061', provider = 'LPDAAC_ECS', variable = 'NDVI', concept_id } = req.query;
+    if (!lat || !lon || !start_date || !end_date) {
+      return res.status(400).json({ error: 'lat, lon, start_date, and end_date are required' });
+    }
+    if (!config.EDL_TOKEN) {
+      return res.status(400).json({ error: 'EDL token not configured (set EDL_TOKEN env var)' });
+    }
+
+    // Allow direct concept_id override
+    let conceptId = concept_id;
+    if (!conceptId) {
+      conceptId = await getCmrCollectionConceptId({ short_name: product, version, provider });
+    }
+    if (!conceptId) {
+      return res.status(400).json({ error: `Unable to resolve collection concept-id for ${product} v${version} (${provider})` });
+    }
+
+    const harmonyUrl = 'https://harmony.earthdata.nasa.gov';
+    const params = new URLSearchParams({
+      temporal: `${start_date}T00:00:00Z/${end_date}T23:59:59Z`,
+      variables: variable === 'ALL' ? 'NDVI,EVI' : variable
+    });
+    params.append('subset', `lat(${lat})`);
+    params.append('subset', `lon(${lon})`);
+
+    const headers = {
+      Authorization: `Bearer ${config.EDL_TOKEN}`,
+      'User-Agent': 'plant-bloom-monitor',
+      'Client-Id': 'plant-bloom-monitor',
+      Accept: 'application/json'
+    };
+
+    const submitUrl = `${harmonyUrl}/ogc-api-coverages/1.0.0/collections/${conceptId}/coverage/rangeset?${params.toString()}`;
+
+    const jobResp = await axios.get(submitUrl, { headers, maxRedirects: 0, validateStatus: s => s >= 200 && s < 400 });
+
+    const jobLocation = jobResp.headers.location || jobResp.request?.res?.headers?.location || null;
+    if (!jobLocation) {
+      return res.status(200).json({ status: 'submitted', note: 'No job location header found', submit_url: submitUrl, response_status: jobResp.status, concept_id: conceptId });
+    }
+
+    res.json({ status: 'submitted', job_url: jobLocation, submit_url: submitUrl, concept_id: conceptId });
+  } catch (error) {
+    console.error('Error requesting real vegetation data:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to request real vegetation data' });
+  }
+});
+
+// Harmony job status proxy
+app.get('/api/harmony/status', async (req, res) => {
+  try {
+    const { job_url } = req.query;
+    if (!job_url) return res.status(400).json({ error: 'job_url is required' });
+    if (!config.EDL_TOKEN) return res.status(400).json({ error: 'EDL token not configured' });
+
+    const headers = {
+      Authorization: `Bearer ${config.EDL_TOKEN}`,
+      'User-Agent': 'plant-bloom-monitor',
+      'Client-Id': 'plant-bloom-monitor',
+      Accept: 'application/json'
+    };
+
+    // Normalize job status URL (ensure .json)
+    const statusUrl = job_url.includes('.json') ? job_url : `${job_url}.json`;
+    const resp = await axios.get(statusUrl, { headers, validateStatus: () => true });
+    return res.status(resp.status).json(resp.data);
+  } catch (e) {
+    console.error('Harmony status error:', e?.response?.data || e.message);
+    return res.status(500).json({ error: 'Failed to get Harmony status' });
+  }
+});
+
+// Harmony job results links proxy
+app.get('/api/harmony/results', async (req, res) => {
+  try {
+    const { job_url } = req.query;
+    if (!job_url) return res.status(400).json({ error: 'job_url is required' });
+    if (!config.EDL_TOKEN) return res.status(400).json({ error: 'EDL token not configured' });
+
+    const headers = {
+      Authorization: `Bearer ${config.EDL_TOKEN}`,
+      'User-Agent': 'plant-bloom-monitor',
+      'Client-Id': 'plant-bloom-monitor',
+      Accept: 'application/json'
+    };
+
+    const statusUrl = job_url.includes('.json') ? job_url : `${job_url}.json`;
+    const resp = await axios.get(statusUrl, { headers, validateStatus: () => true });
+    if (resp.status !== 200) return res.status(resp.status).json(resp.data);
+
+    const links = (resp.data?.links || []).filter(l => l.rel && l.rel.includes('data#'));
+    return res.json({ status: resp.data?.status, links });
+  } catch (e) {
+    console.error('Harmony results error:', e?.response?.data || e.message);
+    return res.status(500).json({ error: 'Failed to get Harmony results' });
+  }
+});
+
+// Alternative: Enhanced mock data that simulates real NDVI patterns
+app.get('/api/vegetation/realistic-mock', async (req, res) => {
+  try {
+    const { lat, lon, start_date, end_date } = req.query;
+    if (!lat || !lon || !start_date || !end_date) {
+      return res.status(400).json({ error: 'lat, lon, start_date, and end_date are required' });
+    }
+
+    const startDate = new Date(start_date);
+    const endDate = new Date(end_date);
+    const series = [];
+    
+    // Generate realistic NDVI patterns based on latitude and season
+    const latitude = parseFloat(lat);
+    const isNorthernHemisphere = latitude > 0;
+    
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 16)) {
+      const dayOfYear = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+      
+      // Seasonal NDVI pattern based on hemisphere
+      let baseNDVI = 0.3; // Winter baseline
+      if (isNorthernHemisphere) {
+        // Northern hemisphere: peak in summer (June-August)
+        if (dayOfYear >= 150 && dayOfYear <= 240) {
+          baseNDVI = 0.7 + Math.sin((dayOfYear - 150) * Math.PI / 90) * 0.2;
+        } else if (dayOfYear >= 60 && dayOfYear <= 150) {
+          // Spring growth
+          baseNDVI = 0.3 + (dayOfYear - 60) * 0.4 / 90;
+        } else if (dayOfYear >= 240 && dayOfYear <= 330) {
+          // Autumn decline
+          baseNDVI = 0.7 - (dayOfYear - 240) * 0.4 / 90;
+        }
+      } else {
+        // Southern hemisphere: peak in Dec-Feb
+        const adjustedDay = (dayOfYear + 183) % 365;
+        if (adjustedDay >= 150 && adjustedDay <= 240) {
+          baseNDVI = 0.7 + Math.sin((adjustedDay - 150) * Math.PI / 90) * 0.2;
+        } else if (adjustedDay >= 60 && adjustedDay <= 150) {
+          baseNDVI = 0.3 + (adjustedDay - 60) * 0.4 / 90;
+        } else if (adjustedDay >= 240 && adjustedDay <= 330) {
+          baseNDVI = 0.7 - (adjustedDay - 240) * 0.4 / 90;
+        }
+      }
+      
+      // Add some realistic noise and cloud effects
+      const noise = (Math.random() - 0.5) * 0.1;
+      const cloudEffect = Math.random() < 0.15 ? -0.3 : 0; // 15% chance of cloud
+      const ndvi = Math.max(0, Math.min(1, baseNDVI + noise + cloudEffect));
+      
+      series.push({
+        date: d.toISOString().split('T')[0],
+        value: Math.round(ndvi * 10000) / 10000,
+        quality: cloudEffect < 0 ? 'cloudy' : 'clear'
+      });
+    }
+
+    res.json({
+      product: 'MOD13Q1.061 (Realistic Mock)',
+      location: { lat: parseFloat(lat), lon: parseFloat(lon) },
+      series: series,
+      note: 'Enhanced mock data with realistic seasonal patterns'
+    });
+  } catch (error) {
+    console.error('Error generating realistic mock data:', error.message);
+    res.status(500).json({ error: 'Failed to generate realistic mock data' });
+  }
+});
+
+async function getCmrCollectionConceptId({ short_name, version, provider }) {
+  try {
+    // Try with provider scoped
+    let params = { short_name, version, provider, page_size: 5 };
+    let resp = await axios.get('https://cmr.earthdata.nasa.gov/search/collections.json', {
+      params,
+      headers: { 'Client-Id': 'plant-bloom-monitor' },
+      validateStatus: () => true
+    });
+    if (resp.status === 200 && resp.data?.feed?.entry?.length) {
+      const entry = resp.data.feed.entry.find(e => (e.id || '').includes(provider)) || resp.data.feed.entry[0];
+      return entry?.id || null;
+    }
+
+    // Retry without provider
+    params = { short_name, version, page_size: 5 };
+    resp = await axios.get('https://cmr.earthdata.nasa.gov/search/collections.json', {
+      params,
+      headers: { 'Client-Id': 'plant-bloom-monitor' },
+      validateStatus: () => true
+    });
+    if (resp.status === 200 && resp.data?.feed?.entry?.length) {
+      // Prefer LPDAAC_ECS if present
+      const entry = resp.data.feed.entry.find(e => (e.id || '').includes('LPDAAC_ECS')) || resp.data.feed.entry[0];
+      return entry?.id || null;
+    }
+
+    // Final fallback: short_name only
+    params = { short_name, page_size: 5 };
+    resp = await axios.get('https://cmr.earthdata.nasa.gov/search/collections.json', {
+      params,
+      headers: { 'Client-Id': 'plant-bloom-monitor' },
+      validateStatus: () => true
+    });
+    if (resp.status === 200 && resp.data?.feed?.entry?.length) {
+      const entry = resp.data.feed.entry.find(e => (e.id || '').includes('LPDAAC_ECS')) || resp.data.feed.entry[0];
+      return entry?.id || null;
+    }
+
+    console.error('CMR collections not found for', { short_name, version, provider, status: resp.status, data: resp.data });
+    return null;
+  } catch (e) {
+    console.error('CMR collections exception:', e?.response?.data || e.message);
+    return null;
+  }
+}
+
 // Weather data endpoint
 app.get('/api/weather', async (req, res) => {
   try {
@@ -266,6 +483,148 @@ app.get('/api/epic/dates', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch EPIC dates' });
   }
 });
+
+// New: Earthdata (CMR) nearby granules search
+app.get('/api/earthdata/search', async (req, res) => {
+  try {
+    const { lat, lon, start_date, end_date, page_size = 20, product, version, provider } = req.query;
+    if (!lat || !lon || !start_date || !end_date) {
+      return res.status(400).json({ error: 'lat, lon, start_date, and end_date are required' });
+    }
+
+    const cacheKey = `earthdata-${lat}-${lon}-${start_date}-${end_date}-${page_size}-${product || ''}-${version || ''}-${provider || ''}`;
+    let data = cache.get(cacheKey);
+
+    if (!data) {
+      data = await searchEarthdataCMR(lat, lon, start_date, end_date, parseInt(page_size), { product, version, provider });
+      cache.set(cacheKey, data);
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error searching Earthdata:', error.message);
+    res.status(500).json({ error: 'Failed to search Earthdata (CMR)' });
+  }
+});
+
+// New: Phenology/bloom metrics endpoint (simulated data pipeline)
+app.get('/api/phenology', async (req, res) => {
+  try {
+    const { lat, lon, start_year, end_year, index_type = 'NDVI' } = req.query;
+    if (!lat || !lon || !start_year || !end_year) {
+      return res.status(400).json({ error: 'lat, lon, start_year, end_year are required' });
+    }
+
+    const sy = parseInt(start_year);
+    const ey = parseInt(end_year);
+    if (ey < sy) return res.status(400).json({ error: 'end_year must be >= start_year' });
+
+    const cacheKey = `phenology-${lat}-${lon}-${sy}-${ey}-${index_type}`;
+    let payload = cache.get(cacheKey);
+
+    if (!payload) {
+      const perYear = [];
+      for (let year = sy; year <= ey; year++) {
+        const startDate = `${year}-01-01`;
+        const endDate = `${year}-12-31`;
+        const series = await getMultiSourceVegetationData(lat, lon, startDate, endDate, index_type);
+        const smoothed = movingAverage(series.map(d => d.value), 5);
+        const detection = detectBloom(series, smoothed);
+        perYear.push({
+          year,
+          onset_date: detection.onsetDate,
+          peak_date: detection.peakDate,
+          end_date: detection.endDate,
+          peak_value: detection.peakValue,
+          duration_days: detection.durationDays,
+          confidence: detection.confidence
+        });
+      }
+
+      // Trend summary
+      const withPeak = perYear.filter(y => y.peak_date);
+      const peakDoys = withPeak.map(y => dayOfYear(y.peak_date));
+      const medianPeakDoy = peakDoys.length ? Math.round(peakDoys.sort((a,b)=>a-b)[Math.floor(peakDoys.length/2)]) : null;
+
+      payload = {
+        location: { lat: parseFloat(lat), lon: parseFloat(lon) },
+        index_type,
+        years: perYear,
+        summary: {
+          num_years: perYear.length,
+          years_with_bloom: withPeak.length,
+          median_peak_day_of_year: medianPeakDoy
+        }
+      };
+
+      cache.set(cacheKey, payload);
+    }
+
+    res.json(payload);
+  } catch (e) {
+    console.error('Error in phenology endpoint:', e);
+    res.status(500).json({ error: 'Failed to compute phenology' });
+  }
+});
+
+function movingAverage(values, windowSize) {
+  const out = [];
+  const half = Math.floor(windowSize / 2);
+  for (let i = 0; i < values.length; i++) {
+    let sum = 0; let count = 0;
+    for (let j = i - half; j <= i + half; j++) {
+      if (j >= 0 && j < values.length) { sum += values[j]; count++; }
+    }
+    out.push(count ? sum / count : values[i]);
+  }
+  return out;
+}
+
+function detectBloom(series, smoothedValues) {
+  if (!series || series.length === 0) return emptyDetection();
+  const values = smoothedValues;
+  const sorted = [...values].sort((a,b)=>a-b);
+  const p10 = sorted[Math.floor(0.10 * (sorted.length - 1))];
+  const p90 = sorted[Math.floor(0.90 * (sorted.length - 1))];
+  const threshold = p10 + 0.4 * (p90 - p10); // adaptive threshold between baseline and high
+
+  // onset: first index crossing threshold rising
+  let onsetIdx = -1;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i-1] < threshold && values[i] >= threshold) { onsetIdx = i; break; }
+  }
+
+  // peak: max value
+  const peakIdx = values.reduce((best, v, i) => v > values[best] ? i : best, 0);
+
+  // end: last index dropping below threshold after peak
+  let endIdx = -1;
+  for (let i = values.length - 2; i > peakIdx; i--) {
+    if (values[i+1] < threshold && values[i] >= threshold) { endIdx = i + 1; break; }
+  }
+
+  const onsetDate = onsetIdx >= 0 ? series[onsetIdx].date : null;
+  const peakDate = series[peakIdx]?.date || null;
+  const endDate = endIdx >= 0 ? series[endIdx].date : null;
+  const durationDays = onsetDate && endDate ? Math.max(0, (new Date(endDate) - new Date(onsetDate)) / (1000*60*60*24)) : null;
+
+  // confidence: based on p90-p10 spread and presence of all markers
+  const spread = Math.max(0, p90 - p10);
+  const completeness = (onsetDate && peakDate && endDate) ? 1 : 0.6;
+  const confidence = Math.max(0.5, Math.min(0.95, 0.5 + spread * 0.8)) * completeness;
+
+  return { onsetDate, peakDate, endDate, peakValue: values[peakIdx], durationDays, confidence };
+}
+
+function emptyDetection() {
+  return { onsetDate: null, peakDate: null, endDate: null, peakValue: null, durationDays: null, confidence: 0.5 };
+}
+
+function dayOfYear(dateStr) {
+  const d = new Date(dateStr);
+  const start = new Date(d.getFullYear(), 0, 0);
+  return Math.floor((d - start) / (1000*60*60*24));
+}
 
 // Health check with detailed status
 app.get('/api/health', (req, res) => {
@@ -843,6 +1202,205 @@ async function generateFallbackEPICData(count) {
   return fallbackData;
 }
 
+// Helper: Search NASA Earthdata CMR
+async function searchEarthdataCMR(lat, lon, startDate, endDate, pageSize, filters = {}) {
+  try {
+    const ps = pageSize && pageSize > 0 ? pageSize : 100;
+    // Widen bounding box to improve matches (+/- 1.0 deg)
+    const d = 1.0;
+    const minLon = parseFloat(lon) - d;
+    const minLat = parseFloat(lat) - d;
+    const maxLon = parseFloat(lon) + d;
+    const maxLat = parseFloat(lat) + d;
+
+    const baseParams = {
+      page_size: ps,
+      sort_key: '-start_date',
+      temporal: `${startDate}T00:00:00Z,${endDate}T23:59:59Z`,
+      bounding_box: `${minLon},${minLat},${maxLon},${maxLat}`
+    };
+
+    if (filters.provider) baseParams.provider = filters.provider;
+
+    if (filters.product) {
+      const params = { ...baseParams, short_name: filters.product };
+      if (filters.version) params.version = filters.version;
+
+      const resp = await axios.get('https://cmr.earthdata.nasa.gov/search/granules.json', {
+        params,
+        headers: { 'Client-Id': 'plant-bloom-monitor' },
+        validateStatus: () => true
+      });
+
+      if (resp.status !== 200) {
+        console.error('CMR search error:', resp.data || resp.status);
+        return { count: 0, earthdata_search_url: `https://search.earthdata.nasa.gov/search?lat=${lat}&long=${lon}&zoom=5`, granules: [] };
+      }
+
+      const items = (resp.data?.feed?.entry || []).map(g => mapCmrGranule(g));
+      const earthdataSearchUrl = `https://search.earthdata.nasa.gov/search?lat=${lat}&long=${lon}&zoom=5&fpj=${encodeURIComponent(JSON.stringify({
+        short_name: filters.product,
+        version: filters.version || undefined,
+        provider: filters.provider || undefined
+      }))}`;
+
+      return { count: items.length, earthdata_search_url: earthdataSearchUrl, granules: items };
+    } else {
+      // Broader set of vegetation products
+      const candidates = [
+        { short_name: 'MOD13Q1', version: '061', provider: 'LPDAAC_ECS' },
+        { short_name: 'MOD13A2', version: '061', provider: 'LPDAAC_ECS' },
+        { short_name: 'VNP13Q1', version: '001', provider: 'LPDAAC_ECS' },
+        { short_name: 'VNP13A1', version: '001', provider: 'LPDAAC_ECS' }
+      ];
+
+      const results = [];
+      for (const c of candidates) {
+        const p = {
+          ...baseParams,
+          short_name: c.short_name,
+          version: c.version,
+          provider: c.provider
+        };
+        const resp = await axios.get('https://cmr.earthdata.nasa.gov/search/granules.json', {
+          params: p,
+          headers: { 'Client-Id': 'plant-bloom-monitor' },
+          validateStatus: () => true
+        });
+        if (resp.status === 200) {
+          const items = (resp.data?.feed?.entry || []).map(g => mapCmrGranule(g));
+          results.push(...items);
+        }
+      }
+
+      const earthdataSearchUrl = `https://search.earthdata.nasa.gov/search?lat=${lat}&long=${lon}&zoom=5`;
+      return { count: results.length, earthdata_search_url: earthdataSearchUrl, granules: results };
+    }
+  } catch (error) {
+    console.error('CMR search error:', error?.response?.data || error.message);
+    return { count: 0, earthdata_search_url: `https://search.earthdata.nasa.gov/search?lat=${lat}&long=${lon}&zoom=5`, granules: [] };
+  }
+}
+
+function mapCmrGranule(g) {
+  return {
+    id: g.id,
+    title: g.title,
+    dataset_id: g.collection_concept_id,
+    time_start: g.time_start,
+    time_end: g.time_end,
+    links: (g.links || []).filter(l => l.href && l.href.startsWith('http')).map(l => ({
+      href: l.href,
+      rel: l.rel,
+      title: l.title
+    })),
+    browse_url: (g.links || []).find(l => (l.rel || '').includes('browse#') || (l.rel || '').includes('browse'))?.href || null
+  };
+}
+
+// Real NDVI series endpoint: submit, poll, download, parse GeoTIFF
+const GeoTIFF = require('geotiff');
+const fetch2 = require('node-fetch');
+
+app.get('/api/vegetation/real/series', async (req, res) => {
+  try {
+    const { lat, lon, start_date, end_date, product = 'MOD13Q1', version = '061', provider = 'LPDAAC_ECS' } = req.query;
+    if (!lat || !lon || !start_date || !end_date) {
+      return res.status(400).json({ error: 'lat, lon, start_date, and end_date are required' });
+    }
+    if (!config.EDL_TOKEN) {
+      return res.status(400).json({ error: 'EDL token not configured (set EDL_TOKEN env var)' });
+    }
+
+    // 1) Submit Harmony job (NDVI)
+    const submitResp = await axios.get(`${req.protocol}://${req.get('host')}/api/vegetation/real`, {
+      params: { lat, lon, start_date, end_date, product, version, provider, variable: 'NDVI' },
+      validateStatus: () => true
+    });
+    if (submitResp.status !== 200 || !submitResp.data?.job_url) {
+      return res.status(502).json({ error: 'Failed to submit Harmony job', detail: submitResp.data });
+    }
+    const jobUrl = submitResp.data.job_url;
+
+    // 2) Poll status up to N times
+    let status = 'running';
+    let attempts = 0;
+    let links = [];
+    while (attempts < 30) {
+      await new Promise(r => setTimeout(r, 3000));
+      attempts++;
+      const statusResp = await axios.get(`${req.protocol}://${req.get('host')}/api/harmony/results`, {
+        params: { job_url: jobUrl }, validateStatus: () => true
+      });
+      if (statusResp.status !== 200) continue;
+      status = statusResp.data?.status || status;
+      if (status === 'successful') {
+        links = statusResp.data?.links || [];
+        break;
+      }
+      if (status === 'failed' || status === 'canceled') {
+        return res.status(502).json({ error: `Harmony job ${status}` });
+      }
+    }
+
+    if (status !== 'successful' || links.length === 0) {
+      return res.status(504).json({ error: 'Harmony job not ready or no data links' });
+    }
+
+    // 3) Download first GeoTIFF (for demo); parse NDVI
+    const dataLink = links.find(l => (l.href || '').toLowerCase().endsWith('.tif') || (l.href || '').toLowerCase().endsWith('.tiff')) || links[0];
+    if (!dataLink?.href) return res.status(502).json({ error: 'No downloadable data link' });
+
+    const authHeaders = { Authorization: `Bearer ${config.EDL_TOKEN}` };
+    const tifResp = await fetch2(dataLink.href, { headers: authHeaders });
+    if (!tifResp.ok) return res.status(502).json({ error: 'Failed to download GeoTIFF' });
+    const arrayBuf = await tifResp.arrayBuffer();
+
+    const tiff = await GeoTIFF.fromArrayBuffer(arrayBuf);
+    const image = await tiff.getImage();
+    const [originX, pixelSizeX, , originY, , pixelSizeY] = image.getGeoKeys ? [0,0,0,0,0,0] : [0,0,0,0,0,0];
+    const bbox = image.getBoundingBox(); // [minX, minY, maxX, maxY]
+
+    // Map lat/lon to pixel indices (approx)
+    const width = image.getWidth();
+    const height = image.getHeight();
+    const minX = bbox[0];
+    const minY = bbox[1];
+    const maxX = bbox[2];
+    const maxY = bbox[3];
+
+    const xFrac = (parseFloat(lon) - minX) / (maxX - minX);
+    const yFrac = (maxY - parseFloat(lat)) / (maxY - minY);
+    const px = Math.max(0, Math.min(width - 1, Math.round(xFrac * (width - 1))));
+    const py = Math.max(0, Math.min(height - 1, Math.round(yFrac * (height - 1))));
+
+    const window = [px - 1, py - 1, px + 1, py + 1];
+    const rasters = await image.readRasters({ window });
+    const values = Array.from(rasters[0] || []);
+
+    // MODIS NDVI scale factor is typically 0.0001; clamp to [0,1]
+    const scale = 0.0001;
+    const ndvi = values.map(v => Math.max(0, Math.min(1, (v ?? 0) * scale)));
+    const meanNdvi = ndvi.length ? ndvi.reduce((a,b)=>a+b,0) / ndvi.length : 0;
+
+    // For demo, return a flat time series with mean value across requested range
+    // In production, we would iterate all returned files (each date) to build full series
+    const series = [{ date: start_date, value: meanNdvi, confidence: 0.9 }, { date: end_date, value: meanNdvi, confidence: 0.9 }];
+
+    return res.json({
+      product: `${product}.${version}`,
+      location: { lat: parseFloat(lat), lon: parseFloat(lon) },
+      period: { start: start_date, end: end_date },
+      points_used: values.length,
+      ndvi_mean: meanNdvi,
+      series
+    });
+  } catch (e) {
+    console.error('Real series error:', e?.response?.data || e.message);
+    return res.status(500).json({ error: 'Failed to create real NDVI series' });
+  }
+});
+
 // Start server
 const PORT = config.PORT;
 app.listen(PORT, () => {
@@ -860,4 +1418,6 @@ app.listen(PORT, () => {
   console.log(`   - GET /api/climate-impact - Climate change impact analysis`);
   console.log(`   - GET /api/pollinator-prediction - Pollinator activity prediction`);
   console.log(`   - GET /api/biodiversity-hotspots - Biodiversity hotspot detection`);
+  console.log(`   - GET /api/earthdata/search - Nearby NASA Earthdata (CMR) granules`);
+  console.log(`   - GET /api/phenology - Phenology/bloom metrics per year`);
 });

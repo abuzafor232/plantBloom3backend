@@ -5,6 +5,7 @@ const config = {
   PORT: process.env.PORT || 3000,
   NODE_ENV: process.env.NODE_ENV || 'development',
   CACHE_TTL: 3600, // 1 hour cache for API responses
+  EDL_TOKEN: process.env.EDL_TOKEN || '',
   VEGETATION_INDICES: {
     NDVI: 'NDVI', // Normalized Difference Vegetation Index
     EVI: 'EVI',   // Enhanced Vegetation Index
